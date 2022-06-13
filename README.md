@@ -7,7 +7,7 @@ osu!Stocks is a public stock exchange, where users can buy and sell stock in ind
 
 Nothing yet :)
 
-## Planned Minimum Functionality
+## Planned Functionality
 
 - List of top <x> osu! players, including a small summary of their current osu! profile, current stock price, and recent stock prices.
 - Global leaderboard showing richest users.
