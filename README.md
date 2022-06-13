@@ -5,15 +5,7 @@ osu!Stocks is a public stock exchange, where users can buy and sell stock in ind
 
 ## Usage
 
-Nothing yet XD
-
- ROFL:ROFL:ROFL:ROFL
-         _^___
- L    __/   [] \
-LOL===__        \
- L      \________]
-         I   I
-        --------/
+Nothing yet :)
 
 ## Planned Minimum Functionality
 
