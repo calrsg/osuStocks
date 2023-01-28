@@ -41,6 +41,8 @@ class OsuStocks(commands.Bot):
                 await self.load_extension(f"cogs.{filename[:-3]}")
                 print(f"{filename} successfully loaded.")
 
+        await self.tree.sync(guild=discord.Object(id=833991086740996117))
+
     @bot.event
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.MissingRequiredArgument):

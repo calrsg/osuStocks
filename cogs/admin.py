@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord import app_commands
 import os
 
 
@@ -8,11 +9,12 @@ class Admin(commands.Cog):
         self.bot = bot
 
     @commands.is_owner()
-    @commands.command(hidden=True, help="Load a specified cog.")
+    @commands.hybrid_command(name="load", with_app_command=True, description="Load a cog.")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
     async def load(self, ctx, extension):
         # awful fix for errors with unknown filenames
         load_success = False
-        for filename in os.listdir(".cogs"):
+        for filename in os.listdir("./cogs"):
             if f"{extension}.py" == filename:
                 await self.bot.load_extension(f"cogs.{extension}")
                 await ctx.send(f"**{extension}** loaded successfully")
@@ -21,11 +23,12 @@ class Admin(commands.Cog):
             await ctx.send(f"**{extension}** has *not* been loaded, please check cog name.")
 
     @commands.is_owner()
-    @commands.command(hidden=True, help="Unload a specified cog.")
+    @commands.hybrid_command(name="unload", with_app_command=True, description="Unload a cog")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
     async def unload(self, ctx, extension):
         # awful fix for errors with unknown filenames
         unload_success = False
-        for filename in os.listdir(".cogs"):
+        for filename in os.listdir("./cogs"):
             if f"{extension}.py" == filename:
                 if filename == "admin.py":
                     await ctx.send(f"**admin** cannot be unloaded, only reloaded.")
@@ -37,11 +40,12 @@ class Admin(commands.Cog):
             await ctx.send(f"**{extension}** has *not* been unloaded, please check cog name.")
 
     @commands.is_owner()
-    @commands.command(hidden=True, help="Reload a specified cog.")
+    @commands.hybrid_command(name="reload", with_app_command=True, description="Reload a cog.")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
     async def reload(self, ctx, extension):
         # awful fix for errors with unknown filenames
         reload_success = False
-        for filename in os.listdir(".cogs"):
+        for filename in os.listdir("./cogs"):
             if f"{extension}.py" == filename:
                 await self.bot.unload_extension(f"cogs.{extension}")
                 await self.bot.load_extension(f"cogs.{extension}")
@@ -51,10 +55,11 @@ class Admin(commands.Cog):
             await ctx.send(f"**{extension}** has *not* been reloaded, please check cog name.")
 
     @commands.is_owner()
-    @commands.command(hidden=True, help="List all cogs in the cogs folder.")
+    @commands.hybrid_command(name="listcogs", with_app_command=True, description="List all cogs in the cogs folder.")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
     async def listcogs(self, ctx):
         cogs = []
-        for filename in os.listdir(".cogs"):
+        for filename in os.listdir("./cogs"):
             if filename.endswith(".py"):
                 cogs.append(filename)
         await ctx.send(f"Found the following cogs: {str(cogs)[1:-1]}")
