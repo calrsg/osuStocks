@@ -2,9 +2,13 @@ import discord
 from discord.ext import commands
 import os
 import json
+import aiomysql
+import asyncio
+from data import database
 
 
 class OsuStocks(commands.Bot):
+
     intents = discord.Intents.default()
 
     bot = commands.Bot(command_prefix="!", intents=intents)
@@ -13,6 +17,7 @@ class OsuStocks(commands.Bot):
         self.discord_bot_token = ""
         self.discord_command_prefixes = [""]
         self.load_config()
+        self.db = ""
 
         allowed_mentions = discord.AllowedMentions(everyone=False, roles=False, users=True)
 
@@ -26,12 +31,23 @@ class OsuStocks(commands.Bot):
 
             self.discord_bot_token = contents['discord']['bot_token']
             self.discord_command_prefixes = contents['discord']['command_prefixes']
+            file.close()
+
+    async def db_conn(self):
+        with open("config.json") as file:
+            contents = json.loads(file.read())
+
+            return await aiomysql.create_pool(host=contents['database']['host'],
+                                              db=contents['database']['database'],
+                                              user=contents['database']['user'],
+                                              password=contents['database']['password'],
+                                              autocommit=True)
 
     @bot.event
     async def on_ready(self):
         print("Bot initialised.")
         await self.startup()
-        await self.change_presence(activity=discord.Game(name=f"discord.gg/happy"))
+        await self.change_presence(activity=discord.Game(name=f"stonks"))
 
     async def startup(self):
         print("Attempting to load cogs...")
@@ -42,6 +58,20 @@ class OsuStocks(commands.Bot):
                 print(f"{filename} successfully loaded.")
 
         await self.tree.sync(guild=discord.Object(id=833991086740996117))
+
+        try:
+            print("Connecting to db...")
+            self.db = await self.db_conn()
+            print("Successfully connected")
+            print(self.db)
+        except Exception as e:
+            print("Error connecting to db")
+            print(e)
+
+        print("Allocating pool to Database manager")
+        database.setBot(self)
+        print("Database Manager connected")
+
 
     @bot.event
     async def on_command_error(self, ctx, error):
@@ -75,5 +105,7 @@ class OsuStocks(commands.Bot):
 
 
 if __name__ == "__main__":
-    maika = OsuStocks()
-    maika.run()
+    osustocks = OsuStocks()
+    osustocks.run()
+
+

@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from data import database, parsedata
 
 
 class Profile(commands.Cog):
@@ -10,7 +11,9 @@ class Profile(commands.Cog):
     @commands.hybrid_command(name="me", with_app_command=True, description="Return user information such as balance, stock holdings, etc.")
     @app_commands.guilds(discord.Object(id=833991086740996117))
     async def me(self, ctx):
-        await ctx.send("Placeholder, will return user balance and stock holdings in a nice looking embed :)")
+        userData = await database.Users.getUser(ctx.author.id)
+        userData = parsedata.Users.parseUser(userData)
+        await ctx.send(userData["balance"])
 
 
 async def setup(bot):

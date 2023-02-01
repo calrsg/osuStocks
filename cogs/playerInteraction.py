@@ -14,6 +14,8 @@ class PlayerInteraction(commands.Cog):
         await ctx.send(str(osuApi.getPlayer(playername)))
 
 
+
+
 async def setup(bot):
     # take name of class, pass in the bot
     await bot.add_cog(PlayerInteraction(bot))
