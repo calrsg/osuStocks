@@ -2,6 +2,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import os
+from data.datamanager import *
+import data.osuApi
 
 
 class Admin(commands.Cog):
@@ -63,6 +65,24 @@ class Admin(commands.Cog):
             if filename.endswith(".py"):
                 cogs.append(filename)
         await ctx.send(f"Found the following cogs: {str(cogs)[1:-1]}")
+
+    @commands.is_owner()
+    @commands.hybrid_command(name="addplayer", with_app_command=True, description="Add a player to the database")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
+    async def addplayer(self, ctx, playername: str):
+        player = data.osuApi.getPlayer(playername)
+        if player is not None:
+            player = player[0]
+            newp = addPlayer(int(player["user_id"]),
+                   player["username"],
+                   country=player["country"],
+                   rank=int(player["pp_rank"]),
+                   rankCountry=int(player["pp_country_rank"]),
+                   pp=int(float(player["pp_raw"])),
+                   accuracy=float(player["accuracy"]),
+                   price=2)
+            print(newp.playerName)
+            await ctx.send(newp.playerName)
 
 
 async def setup(bot):

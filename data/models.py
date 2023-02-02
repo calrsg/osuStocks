@@ -1,6 +1,10 @@
 from peewee import *
+import json
 
-db = MySQLDatabase("osustocks", host="localhost", user="root", password="impost3r")
+with open("./config.json") as file:
+    contents = json.loads(file.read())
+
+db = MySQLDatabase(contents["database"]["database"], host=contents["database"]["host"], user=contents["database"]["user"], password=contents["database"]["password"])
 
 
 class BaseModel(Model):
@@ -21,7 +25,7 @@ class Player(BaseModel):
     rankCountry = IntegerField(null=False)
     pp = IntegerField(null=False)
     accuracy = FloatField(null=False)
-    val = FloatField(null=False)
+    price = FloatField(null=False)
 
 
 class Holding(BaseModel):
@@ -36,5 +40,16 @@ class Transaction(BaseModel):
     sellerID = ForeignKeyField(User, to_field='userID', backref='transactions', null=False)
     buyerID = ForeignKeyField(User, to_field='userID', backref='transactions', null=False)
     playerID = ForeignKeyField(Player, to_field='playerID', backref='transactions', null=False)
+    listTime = DateTimeField(null=False)
+    sellTime = DateTimeField(null=False)
     amount = IntegerField(null=False)
-    val = FloatField(null=False)
+    price = FloatField(null=False)
+
+
+class Listing(BaseModel):
+    listingID = AutoField(primary_key=True, unique=True, null=False)
+    holdingID = ForeignKeyField(Holding, to_field='holdingID', backref='listings', null=False)
+    amount = IntegerField(null=False)
+    price = FloatField(null=False)
+    listTime = DateTimeField(null=False)
+
