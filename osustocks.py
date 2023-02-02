@@ -2,10 +2,7 @@ import discord
 from discord.ext import commands
 import os
 import json
-import aiomysql
-import asyncio
-from data.pwschema import db
-import peewee
+from data.models import db
 
 
 class OsuStocks(commands.Bot):

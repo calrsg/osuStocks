@@ -1,9 +1,8 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
-import sys
-import time, datetime
-from data.pwschema import User, Player, Holding, Transaction
+import datetime
+from data.models import User, Player, Holding, Transaction
 
 
 class Profile(commands.Cog):
