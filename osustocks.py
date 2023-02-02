@@ -4,7 +4,8 @@ import os
 import json
 import aiomysql
 import asyncio
-from data import database
+from data.pwschema import db
+import peewee
 
 
 class OsuStocks(commands.Bot):
@@ -17,7 +18,7 @@ class OsuStocks(commands.Bot):
         self.discord_bot_token = ""
         self.discord_command_prefixes = [""]
         self.load_config()
-        self.db = ""
+        self.dbt = db
 
         allowed_mentions = discord.AllowedMentions(everyone=False, roles=False, users=True)
 
@@ -33,15 +34,15 @@ class OsuStocks(commands.Bot):
             self.discord_command_prefixes = contents['discord']['command_prefixes']
             file.close()
 
-    async def db_conn(self):
-        with open("config.json") as file:
-            contents = json.loads(file.read())
-
-            return await aiomysql.create_pool(host=contents['database']['host'],
-                                              db=contents['database']['database'],
-                                              user=contents['database']['user'],
-                                              password=contents['database']['password'],
-                                              autocommit=True)
+    # async def db_conn(self):
+    #     with open("config.json") as file:
+    #         contents = json.loads(file.read())
+    #
+    #         return await aiomysql.create_pool(host=contents['database']['host'],
+    #                                           db=contents['database']['database'],
+    #                                           user=contents['database']['user'],
+    #                                           password=contents['database']['password'],
+    #                                           autocommit=True)
 
     @bot.event
     async def on_ready(self):
@@ -59,46 +60,45 @@ class OsuStocks(commands.Bot):
 
         await self.tree.sync(guild=discord.Object(id=833991086740996117))
 
-        try:
-            print("Connecting to db...")
-            self.db = await self.db_conn()
-            print("Successfully connected")
-            print(self.db)
-        except Exception as e:
-            print("Error connecting to db")
-            print(e)
+        # try:
+        #     print("Connecting to db...")
+        #     self.db = await self.db_conn()
+        #     print("Successfully connected")
+        #     print(self.db)
+        # except Exception as e:
+        #     print("Error connecting to db")
+        #     print(e)
+        #
+        # print("Allocating pool to Database manager")
+        # database.setBot(self)
+        # print("Database Manager connected")
 
-        print("Allocating pool to Database manager")
-        database.setBot(self)
-        print("Database Manager connected")
-
-
-    @bot.event
-    async def on_command_error(self, ctx, error):
-        if isinstance(error, commands.MissingRequiredArgument):
-            await ctx.send("Missing argument.")
-        if isinstance(error, commands.CommandNotFound):
-            return
-        if isinstance(error, commands.PrivateMessageOnly):
-            await ctx.send("This command is for DM's only.")
-        if isinstance(error, commands.NotOwner):
-            await ctx.send("Bot author command only.")
-        if isinstance(error, commands.UserNotFound):
-            await ctx.send("Specified user not found.")
-        if isinstance(error, commands.MemberNotFound):
-            await ctx.send("Specified member not found.")
-        if isinstance(error, commands.MessageNotFound):
-            await ctx.send("Specified message not found.")
-        if isinstance(error, commands.ChannelNotFound):
-            await ctx.send("Specified channel not found.")
-        if isinstance(error, commands.MissingAnyRole):
-            await ctx.send("You do not have the role required for this command.")
-        if isinstance(error, commands.MissingPermissions):
-            await ctx.send("You do not have permission for this command")
-        if isinstance(error, commands.BotMissingRole):
-            await ctx.send("I do not have the role required for this command.")
-        if isinstance(error, commands.BotMissingPermissions):
-            await ctx.send("I do not have permission for this command")
+    # @bot.event
+    # async def on_command_error(self, ctx, error):
+    #     if isinstance(error, commands.MissingRequiredArgument):
+    #         await ctx.send("Missing argument.")
+    #     if isinstance(error, commands.CommandNotFound):
+    #         return
+    #     if isinstance(error, commands.PrivateMessageOnly):
+    #         await ctx.send("This command is for DM's only.")
+    #     if isinstance(error, commands.NotOwner):
+    #         await ctx.send("Bot author command only.")
+    #     if isinstance(error, commands.UserNotFound):
+    #         await ctx.send("Specified user not found.")
+    #     if isinstance(error, commands.MemberNotFound):
+    #         await ctx.send("Specified member not found.")
+    #     if isinstance(error, commands.MessageNotFound):
+    #         await ctx.send("Specified message not found.")
+    #     if isinstance(error, commands.ChannelNotFound):
+    #         await ctx.send("Specified channel not found.")
+    #     if isinstance(error, commands.MissingAnyRole):
+    #         await ctx.send("You do not have the role required for this command.")
+    #     if isinstance(error, commands.MissingPermissions):
+    #         await ctx.send("You do not have permission for this command")
+    #     if isinstance(error, commands.BotMissingRole):
+    #         await ctx.send("I do not have the role required for this command.")
+    #     if isinstance(error, commands.BotMissingPermissions):
+    #         await ctx.send("I do not have permission for this command")
 
     def run(self):
         super().run(self.discord_bot_token)
