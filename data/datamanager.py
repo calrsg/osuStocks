@@ -1,6 +1,6 @@
 import peewee
 from peewee import *
-from data.models import User, Player, Holding, Transaction
+from data.models import User, Player, Holding, Transaction, Listing, Order
 import time, datetime
 
 
@@ -20,47 +20,6 @@ def getUser(userID: int):
             userID=userID,
             balance=0)
         return user
-
-
-def getUserHoldings(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of all Holding objects corresponding to the User passed in, and the val of the joined Player. Returns None if no Holdings found.
-    """
-    try:
-        return (Holding.select(Holding.amount, Player.val)
-                .join(User)
-                .join_from(Holding, Player)
-                .where(user.userID == User.userID))
-    except Exception as e:
-        return None
-
-
-def getUserTransactions(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of all Transaction objects corresponding to the User passed in.
-    """
-    return (Transaction.select()
-            .where(Transaction.buyerID == user.userID or Transaction.sellerID == user.userID))
-
-
-def getUserSaleTransactions(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of Transaction objects where the passed user was the seller.
-    """
-    return (Transaction.select()
-            .where(Transaction.sellerID == user.userID))
-
-
-def getUserBuyerTransactions(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of Transaction objects where the passed user was the buyer.
-    """
-    return (Transaction.select()
-            .where(Transaction.buyerID == user.userID))
 
 
 def getPlayerWithID(playerID: int):
@@ -118,6 +77,24 @@ def getHolding(holdingID: int):
         return None
 
 
+def addHolding(holdingID: int, userID: int, playerID: int, amount: int):
+    """
+    :param holdingID: an int matching a holding ID.
+    :param userID: an int matching a Discord user ID.
+    :param playerID: an int matching an osu! player ID.
+    :param amount: an int declaring how much of the stock is held.
+    :return: A Holding model object that was created, or one that already exists.
+    """
+
+    result = getHolding(holdingID)
+    if result is None:
+        result = Holding.create(holdingID=holdingID,
+                                userID=userID,
+                                playerID=playerID,
+                                amount=amount)
+    return result
+
+
 def getTransaction(transactionID: int):
     """
 
@@ -132,7 +109,83 @@ def getTransaction(transactionID: int):
         return None
 
 
+def addTransaction(sellerID: int, buyerID: int, playerID: int,
+                   listTime: datetime, sellTime: datetime, amount: int, price: float):
+    """
+    :param sellerID: An int matching a userID
+    :param buyerID: An int matching a userID
+    :param playerID: An int matching an osu! player ID
+    :param listTime: A datetime when the listing was made
+    :param sellTime: A datetime when the transaction was made
+    :param amount: The amount of stock sold
+    :param price: The price paid for each stock
+    :return: The created Transaction
+    """
+
+    return Transaction.create(sellerID=sellerID,
+                              buyerID=buyerID,
+                              playerID=playerID,
+                              listTime=listTime,
+                              sellTime=sellTime,
+                              amount=amount,
+                              price=price)
+
+
+def getListing(listingID: int):
+    """
+
+    :param listingID: an int matching a listing ID.
+    :return: A Transaction model object matching the ID, or None if not found.
+    """
+
+    try:
+        return Listing.get(Listing.listingID == listingID)
+    except Exception as e:
+        print(e)
+        return None
+
+
+def getListingDetail(listingID: int):
+    """
+    :param listingID: an int matching a listing ID.
+    :return: A Listing object including Player and User.
+    """
+
+    try:
+        return (Listing.select()
+                .join(Holding)
+                .join_from(Holding, Player)
+                .join_from(Holding, User)
+                .where(Listing.listingID == listingID)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def addListing(listingID: int, holdingID: int, amount: int, price: float, listTime: datetime):
+    """
+    :param listingID:
+    :param holdingID:
+    :param amount:
+    :param price:
+    :param listTime:
+    :return:
+    """
+
+    result = getListing(listingID)
+
+    if result is None:
+        result = Listing.create(listingID=listingID,
+                                holdingID=holdingID,
+                                amount=amount,
+                                price=price,
+                                listTime=listTime)
+
+    return result
+
+
 # FETCH ALL
+
 
 def getUsers():
     """
@@ -145,7 +198,7 @@ def getPlayers():
     """
     :return: A list of all stored players as Player model objects
     """
-    return Player.select()
+    return Player.select().order_by(Player.rank)
 
 
 def getHoldings():
@@ -159,6 +212,142 @@ def getTransactions():
     """
     :return: A list of all stored Transactions as Transaction model objects // This will be fucking massive, do not use outside of debug or mass data editing.
     """
-    return Transaction.select()
+    return Transaction.select().order_by(Transaction.sellTime)
 
 
+def getListings():
+    """
+    :return: A list of all active Listings as Listing model objects
+    """
+    return Listing.select()
+
+
+def getOrders():
+    """
+    :return: A list of all active Orders as Order model objects.
+    """
+    return Order.select()
+
+
+def getListingDetails():
+    """
+    :return: A Listing object including Player and User, or None if no Listings are found.
+    """
+
+    try:
+        return (Listing.select(Listing, Holding, Player, User)
+                .join(Holding)
+                .join_from(Holding, Player)
+                .join_from(Holding, User)
+                .order_by(Player.rank)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def getListingsByPlayer(player: Player):
+    """
+    :param player: A Player model object.
+    :return: A Listing object including Player and User, or None if no Listings are found.
+    """
+
+    try:
+        return (Listing.select(Listing, Holding, Player, User)
+                .join(Holding)
+                .join_from(Holding, Player)
+                .join_from(Holding, User)
+                .where(Player.playerID == player.playerID)
+                .order_by(Player.rank)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def getOrderDetails(orderID):
+    """
+    :param orderID: an int matching an order ID.
+    :return: An Order object including Player and User, or None if no Orders are found.
+    """
+
+    try:
+        return (Order.select(Order, Player, User)
+                .join_from(Player)
+                .join_from(Order, User)
+                .order_by(Order.orderTime)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def getOrdersByPlayer(player: Player):
+    """
+    :param player: A Player model object.
+    :return: An Order object including Player and User, or None if no Orders are found.
+    """
+
+    try:
+        return (Order.select(Order, Player, User)
+                .join_from(Player)
+                .join_from(Order, User)
+                .where(Player.playerID == player.playerID)
+                .order_by(Order.orderTime)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def getUserHoldings(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of all Holding objects corresponding to the User passed in, and the val of the joined Player. Returns None if no Holdings found.
+    """
+    try:
+        print(user.userID)
+        return (Holding.select(Holding, User, Player)
+                .join(User)
+                .join_from(Holding, Player)
+                .where(user.userID == User.userID)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def getUserTransactions(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of all Transaction objects corresponding to the User passed in.
+    """
+    return (Transaction.select()
+            .where(Transaction.buyerID == user.userID or Transaction.sellerID == user.userID))
+
+
+def getUserSaleTransactions(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of Transaction objects where the passed user was the seller.
+    """
+    return (Transaction.select()
+            .where(Transaction.sellerID == user.userID))
+
+
+def getUserBuyerTransactions(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of Transaction objects where the passed user was the buyer.
+    """
+    return (Transaction.select()
+            .where(Transaction.buyerID == user.userID))
+
+
+def getPlayerListings(player: Player):
+    """
+    :param player: A Player model object
+    :return: A table consisting of Listings for a specific Player.
+    """
+    try:
+        return (Listing.select()
+                .join(Holding)
+                .join(Player)
+                .where(Player.playerID == player.playerID))
+    except Exception as e:
+        return None

@@ -3,7 +3,8 @@ from discord.ext import commands
 from discord import app_commands
 import os
 from data.datamanager import *
-import data.osuApi
+import data.osuapi
+from utils.paginator import PaginationView
 
 
 class Admin(commands.Cog):
@@ -73,8 +74,8 @@ class Admin(commands.Cog):
         player = data.osuApi.getPlayer(playername)
         if player is not None:
             player = player[0]
-            newp = addPlayer(int(player["user_id"]),
-                   player["username"],
+            newp = addPlayer(playerID=int(player["user_id"]),
+                   playerName=player["username"],
                    country=player["country"],
                    rank=int(player["pp_rank"]),
                    rankCountry=int(player["pp_country_rank"]),
@@ -83,6 +84,50 @@ class Admin(commands.Cog):
                    price=2)
             print(newp.playerName)
             await ctx.send(newp.playerName)
+
+    @commands.is_owner()
+    @commands.hybrid_command(name="transactions", with_app_command=True, description="[DEBUG] Return all transactions.")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
+    async def transactions(self, ctx):
+        transactions = getTransactions()
+        if len(transactions) == 0:
+            await ctx.send("No transactions found.")
+            return
+        output = []
+        count = 0
+        for entry in transactions:
+            if count < 100:
+                output.append({"label": f"{entry.transactionID}",
+                               "item": f"seller: {entry.sellerID} | buyer: {entry.buyerID}\n"
+                                       f"listed: {entry.listTime} | sold: {entry.sellTime}\n"
+                                       f"amount: {entry.amount} | price: {entry.price} | total: {entry.amount * entry.price}"})
+                count += 1
+        pagination_view = PaginationView(timeout=None)
+        pagination_view.title = "[DEBUG] Transactions"
+        pagination_view.data = output
+        await pagination_view.send(ctx)
+
+    @commands.is_owner()
+    @commands.hybrid_command(name="holdings", with_app_command=True, description="[DEBUG] Return all holdings.")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
+    async def holdings(self, ctx):
+        holdings = getHoldings()
+        if len(holdings) == 0:
+            await ctx.send("No holdings found.")
+            return
+        output = []
+        count = 0
+        for entry in holdings:
+            if count < 100:
+                output.append({"label": f"{entry.holdingID}",
+                               "item": f"holder: {entry.userID}\n"
+                                       f"player: {entry.playerID}\n"
+                                       f"amount: {entry.amount}"})
+                count += 1
+        pagination_view = PaginationView(timeout=None)
+        pagination_view.title = "[DEBUG] Holdings"
+        pagination_view.data = output
+        await pagination_view.send(ctx)
 
 
 async def setup(bot):

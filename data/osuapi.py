@@ -10,10 +10,10 @@ with open("./config.json") as file:
 
 
 def getPlayer(username):
-    request = requests.get(f"{apiurl}/get_user?k={apikey}&u={username}&m=0")
+    request = requests.get(f"{apiurl}get_user?k={apikey}&u={username}&m=0")
     if request.status_code != 200:
         print(f"Error fetching data, status code {request.status_code}")
         return None
     data = request.json()
     print(data)
-    return data
+    return data[0]
