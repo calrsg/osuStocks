@@ -1,6 +1,7 @@
 import peewee
 from peewee import *
 from data.models import User, Player, Holding, Transaction, Listing, Order
+from utils.marketmanager import MarketManager, ProcessTransactions
 import time, datetime
 
 
@@ -8,6 +9,7 @@ import time, datetime
 
 def getUser(userID: int):
     """
+    Returns a User model object matching the passed Discord user ID. Will create an entry to return if none is found.
     :param userID: An integer matching a Discord user ID.
     :return: A User model object matching the stored data for the Discord user.
     """
@@ -24,7 +26,7 @@ def getUser(userID: int):
 
 def getPlayerWithID(playerID: int):
     """
-
+    Return a Player model object from an osu! user ID.
     :param playerID: an int matching an osu! user ID.
     :return: A Player model object matching the ID, or None if not found.
     """
@@ -37,7 +39,7 @@ def getPlayerWithID(playerID: int):
 
 def getPlayerWithName(playerName: str):
     """
-
+    Return a Player model object from an osu! username.
     :param playerName: an int matching an osu! username.
     :return: A Player model object matching the ID, or None if not found.
     """
@@ -49,6 +51,18 @@ def getPlayerWithName(playerName: str):
 
 
 def addPlayer(playerID: int, playerName: str, country: str, rank: int, rankCountry: int, pp: int, accuracy: float, price: float):
+    """
+    Returns a newly created Player model object, or returns an already existing match.
+    :param playerID: An int matching an osu! user ID.
+    :param playerName: A string matching an osu! username
+    :param country: A string matching an osu! country code.
+    :param rank: An int representing the players rank.
+    :param rankCountry: An int representing the players country rank
+    :param pp: An int representing the players pp.
+    :param accuracy: A float representing the players accuracy
+    :param price: A float representing the price of the player in the market.
+    :return: The Player model object, or an already existing match.
+    """
     player = getPlayerWithID(playerID)
     if player is None:
         player = Player.create(playerID=playerID,
@@ -63,9 +77,29 @@ def addPlayer(playerID: int, playerName: str, country: str, rank: int, rankCount
     return player
 
 
+def updatePlayer(osuPlayer: dict):
+    """
+    Updates an osu! player with new osu!api information
+    :param osuPlayer: A Player model object.
+    :return: The updated Player model object, or None if no matching player to update was found.
+    """
+    player = getPlayerWithID(int(osuPlayer["user_id"]))
+    if player is None:
+        return
+
+    player.playerName = osuPlayer["username"]
+    player.country = osuPlayer["country"]
+    player.rank = osuPlayer["pp_rank"]
+    player.rankCountry = int(osuPlayer["pp_country_rank"])
+    player.pp = int(float(osuPlayer["pp_raw"]))
+    player.accuracy = float(osuPlayer["accuracy"])
+    player.save()
+    return player
+
+
 def getHolding(holdingID: int):
     """
-
+    Returns a Holding model object matching the holding ID.
     :param holdingID: an int matching a holding ID.
     :return: A Holding model object matching the ID, or None if not found.
     """
@@ -77,27 +111,24 @@ def getHolding(holdingID: int):
         return None
 
 
-def addHolding(holdingID: int, userID: int, playerID: int, amount: int):
+def addHolding(userID: int, playerID: int, amount: int):
     """
-    :param holdingID: an int matching a holding ID.
+    Returns a newly created Holding model object.
     :param userID: an int matching a Discord user ID.
     :param playerID: an int matching an osu! player ID.
     :param amount: an int declaring how much of the stock is held.
     :return: A Holding model object that was created, or one that already exists.
     """
 
-    result = getHolding(holdingID)
-    if result is None:
-        result = Holding.create(holdingID=holdingID,
-                                userID=userID,
-                                playerID=playerID,
-                                amount=amount)
-    return result
+    return Holding.create(
+        userID=userID,
+        playerID=playerID,
+        amount=amount)
 
 
 def getTransaction(transactionID: int):
     """
-
+    Returns a Transaction model object matching the transaction ID.
     :param transactionID: an int matching a transaction ID.
     :return: A Transaction model object matching the ID, or None if not found.
     """
@@ -112,6 +143,7 @@ def getTransaction(transactionID: int):
 def addTransaction(sellerID: int, buyerID: int, playerID: int,
                    listTime: datetime, sellTime: datetime, amount: int, price: float):
     """
+    Returns the newly created Transaction model object.
     :param sellerID: An int matching a userID
     :param buyerID: An int matching a userID
     :param playerID: An int matching an osu! player ID
@@ -133,7 +165,7 @@ def addTransaction(sellerID: int, buyerID: int, playerID: int,
 
 def getListing(listingID: int):
     """
-
+    Returns a Listing model object matching the listing ID.
     :param listingID: an int matching a listing ID.
     :return: A Transaction model object matching the ID, or None if not found.
     """
@@ -147,8 +179,9 @@ def getListing(listingID: int):
 
 def getListingDetail(listingID: int):
     """
+    Returns a Listing model object including the Holding, Player, and User tables, matching the listing ID.
     :param listingID: an int matching a listing ID.
-    :return: A Listing object including Player and User.
+    :return: A Listing object including Player and User, or None if no match is found.
     """
 
     try:
@@ -162,26 +195,68 @@ def getListingDetail(listingID: int):
         return None
 
 
-def addListing(listingID: int, holdingID: int, amount: int, price: float, listTime: datetime):
+def addListing(holdingID: int, amount: int, price: float):
     """
-    :param listingID:
+    Returns the newly created Listing model object.
     :param holdingID:
     :param amount:
     :param price:
-    :param listTime:
     :return:
     """
 
-    result = getListing(listingID)
+    return Listing.create(
+        holdingID=holdingID,
+        amount=amount,
+        price=price,
+        listTime=datetime.datetime.utcnow())
 
-    if result is None:
-        result = Listing.create(listingID=listingID,
-                                holdingID=holdingID,
-                                amount=amount,
-                                price=price,
-                                listTime=listTime)
 
-    return result
+def getOrder(orderID: int):
+    """
+    Returns an Order model object matching the order ID.
+    :param orderID: an int matching an order ID.
+    :return: An Order model object matching the order ID, or None if no match is found.
+    """
+
+    try:
+        return (Order.select()
+                .where(orderID == Order.orderID))
+    except Exception as e:
+        return None
+
+
+def getOrderDetail(orderID: int):
+    """
+    Return an Order model object including Player and User tables.
+    :param orderID: an int matching an order ID.
+    :return: An Order object including Player and User, or None if no match is found.
+    """
+
+    try:
+        return (Order.select()
+                .join(User)
+                .join_from(Order, Player)
+                .where(orderID == Order.orderID))
+    except Exception as e:
+        return None
+
+
+def addOrder(buyerID: int, playerID: int, amount: int, price: float):
+    """
+    Returns the newly created Order object.
+    :param buyerID:
+    :param playerID:
+    :param amount:
+    :param price:
+    :return:
+    """
+    return Order.create(
+        buyerID=buyerID,
+        playerID=playerID,
+        orderTime=datetime.datetime.utcnow(),
+        amount=amount,
+        price=price
+    )
 
 
 # FETCH ALL
@@ -227,6 +302,63 @@ def getOrders():
     :return: A list of all active Orders as Order model objects.
     """
     return Order.select()
+
+
+def getUserHoldings(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of all Holding objects corresponding to the User passed in, and the val of the joined Player. Returns None if no Holdings found.
+    """
+    try:
+        print(user.userID)
+        return (Holding.select(Holding, User, Player)
+                .join(User)
+                .join_from(Holding, Player)
+                .where(user.userID == User.userID)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def getUserTransactions(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of all Transaction objects corresponding to the User passed in.
+    """
+    return (Transaction.select()
+            .where(Transaction.buyerID == user.userID or Transaction.sellerID == user.userID))
+
+
+def getUserSaleTransactions(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of Transaction objects where the passed user was the seller.
+    """
+    return (Transaction.select()
+            .where(Transaction.sellerID == user.userID))
+
+
+def getUserBuyerTransactions(user: User):
+    """
+    :param user: a User model object.
+    :return: A table consisting of Transaction objects where the passed user was the buyer.
+    """
+    return (Transaction.select()
+            .where(Transaction.buyerID == user.userID))
+
+
+def getPlayerListings(player: Player):
+    """
+    :param player: A Player model object
+    :return: A table consisting of Listings for a specific Player.
+    """
+    try:
+        return (Listing.select()
+                .join(Holding)
+                .join(Player)
+                .where(Player.playerID == player.playerID))
+    except Exception as e:
+        return None
 
 
 def getListingDetails():
@@ -292,62 +424,5 @@ def getOrdersByPlayer(player: Player):
                 .where(Player.playerID == player.playerID)
                 .order_by(Order.orderTime)
                 .objects())
-    except Exception as e:
-        return None
-
-
-def getUserHoldings(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of all Holding objects corresponding to the User passed in, and the val of the joined Player. Returns None if no Holdings found.
-    """
-    try:
-        print(user.userID)
-        return (Holding.select(Holding, User, Player)
-                .join(User)
-                .join_from(Holding, Player)
-                .where(user.userID == User.userID)
-                .objects())
-    except Exception as e:
-        return None
-
-
-def getUserTransactions(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of all Transaction objects corresponding to the User passed in.
-    """
-    return (Transaction.select()
-            .where(Transaction.buyerID == user.userID or Transaction.sellerID == user.userID))
-
-
-def getUserSaleTransactions(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of Transaction objects where the passed user was the seller.
-    """
-    return (Transaction.select()
-            .where(Transaction.sellerID == user.userID))
-
-
-def getUserBuyerTransactions(user: User):
-    """
-    :param user: a User model object.
-    :return: A table consisting of Transaction objects where the passed user was the buyer.
-    """
-    return (Transaction.select()
-            .where(Transaction.buyerID == user.userID))
-
-
-def getPlayerListings(player: Player):
-    """
-    :param player: A Player model object
-    :return: A table consisting of Listings for a specific Player.
-    """
-    try:
-        return (Listing.select()
-                .join(Holding)
-                .join(Player)
-                .where(Player.playerID == player.playerID))
     except Exception as e:
         return None
