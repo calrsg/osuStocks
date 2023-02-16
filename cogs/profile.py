@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 from data.datamanager import *
+from utils.marketmanager import *
 from utils.paginator import PaginationView
 
 
@@ -112,6 +113,30 @@ class Profile(commands.Cog):
                                           f"take on user feedback, after which the market will be reset for release.")
 
         await ctx.send(embed=embed)
+
+    @commands.hybrid_command(name="myorders", with_app_command=True, description="Returns your active orders.")
+    @app_commands.guilds(discord.Object(id=833991086740996117))
+    async def myorders(self, ctx):
+        user = getUser(ctx.author.id)
+        orders = getOrdersByUser(user)
+        if orders is None:
+            await ctx.send("No orders found")
+            return
+
+        if len(orders) == 0:
+            await ctx.send("No orders found.")
+            return
+
+        output = []
+        for entry in orders:
+            output.append({"label": f"{entry.orderID} | {entry.playerName}",
+                          "item": f"Pending: {entry.amount} @ {entry.price}\n"
+                                  f"Created: {entry.orderTime}"})
+
+        pagination_view = PaginationView(timeout=None)
+        pagination_view.title = f"{ctx.author.name}'s Active Orders"
+        pagination_view.data = output
+        await pagination_view.send(ctx)
 
 
 async def setup(bot):

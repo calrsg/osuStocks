@@ -56,8 +56,8 @@ class Listing(BaseModel):
 
 class Order(BaseModel):
     orderID = AutoField(primary_key=True, unique=True, null=False)
-    buyerID = ForeignKeyField(User, to_field='userID', backref='transactions', null=False)
-    playerID = ForeignKeyField(Player, to_field='playerID', backref='transactions', null=False)
+    buyerID = ForeignKeyField(User, to_field='userID', backref='user', null=False)
+    playerID = ForeignKeyField(Player, to_field='playerID', backref='player', null=False)
     orderTime = DateTimeField(null=False)
     amount = IntegerField(null=False)
     price = FloatField(null=False)

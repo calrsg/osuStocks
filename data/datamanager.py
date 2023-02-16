@@ -192,6 +192,7 @@ def getListingDetail(listingID: int):
                 .where(Listing.listingID == listingID)
                 .objects())
     except Exception as e:
+        print(e)
         return None
 
 
@@ -219,8 +220,7 @@ def getOrder(orderID: int):
     """
 
     try:
-        return (Order.select()
-                .where(orderID == Order.orderID))
+        return Order.get(Order.orderID == orderID)
     except Exception as e:
         return None
 
@@ -236,7 +236,26 @@ def getOrderDetail(orderID: int):
         return (Order.select()
                 .join(User)
                 .join_from(Order, Player)
-                .where(orderID == Order.orderID))
+                .where(orderID == Order.orderID)
+                .objects())
+    except Exception as e:
+        return None
+
+
+def getOrderDetailFromUser(orderID: int, userID: int):
+    """
+    Return an Order model object including Player and User tables.
+    :param orderID: an int matching an order ID.
+    :param userID: an int matching a User ID.
+    :return: An Order object including Player and User, or None if no match is found.
+    """
+
+    try:
+        return (Order.select()
+                .join(User)
+                .join_from(Order, Player)
+                .where(orderID == Order.orderID and userID == User.userID)
+                .get())
     except Exception as e:
         return None
 
@@ -258,6 +277,20 @@ def addOrder(buyerID: int, playerID: int, amount: int, price: float):
         price=price
     )
 
+
+def delOrder(orderID: int):
+    """
+    Delete an order matching an orderID.
+    :param orderID: An int matching an orderID.
+    :return: True if deleted, False if an error occured.
+    """
+    try:
+        order = getOrder(orderID)
+        order.delete_instance()
+        return True
+    except Exception as e:
+        print(e)
+        return False
 
 # FETCH ALL
 
@@ -403,11 +436,29 @@ def getOrderDetails(orderID):
 
     try:
         return (Order.select(Order, Player, User)
-                .join_from(Player)
+                .join(Player)
                 .join_from(Order, User)
                 .order_by(Order.orderTime)
                 .objects())
     except Exception as e:
+        return None
+
+
+def getOrdersByUser(user: User):
+    """
+    :param user: A User model object.
+    :return: An Order object including Player and User, or None if no Orders are found.
+    """
+
+    try:
+        return (Order.select(Order, Player, User)
+                .join(Player)
+                .join_from(Order, User)
+                .where(User.userID == user.userID)
+                .order_by(Order.orderTime)
+                .objects())
+    except Exception as e:
+        print(e)
         return None
 
 

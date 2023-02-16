@@ -1,11 +1,35 @@
 import sys
+import time, datetime
 
-from data.models import User, Player, Holding, Transaction, Listing
-from data.datamanager import *
-import time
+from data.models import *
+import data.datamanager
 
 
 class MarketManager:
+
+
+    @staticmethod
+    def addListingToMarket(holdingID: int, amount: int, price: float):
+        listing = data.datamanager.addListing(
+            holdingID=holdingID,
+            amount=amount,
+            price=price,
+        )
+        # Since this is a new listing, check for price updates on the Player.
+        holding = data.datamanager.getHolding(holdingID)
+        player = data.datamanager.getPlayerWithID(holding.playerID)
+        MarketManager.updatePrice(player)
+
+        return MarketManager.matchListing(listing)
+
+    @staticmethod
+    def addOrderToMarket(buyerID: int, playerID: int, amount: int, price: float):
+        order = data.datamanager.addOrder(
+            buyerID=buyerID,
+            playerID=playerID,
+            amount=amount,
+            price=price)
+        return MarketManager.matchOrder(order)
 
     @staticmethod
     def updatePrice(stock: Player):
@@ -15,7 +39,7 @@ class MarketManager:
         :return: The updated Player model after being saved, or None if no listings were found.
         """
         # Get Listings for specific Player
-        listings = getPlayerListings(stock)
+        listings = data.datamanager.getPlayerListings(stock)
         if listings is None:
             return None
         lowestPrice = sys.float_info.max
@@ -38,9 +62,9 @@ class MarketManager:
         """
         # Get all Orders for the Player in the passed Listing
         try:
-            holding = getHolding(listing.holdingID)
-            player = getPlayerWithID(holding.playerID)
-            orders = getOrdersByPlayer(player)
+            holding = data.datamanager.getHolding(listing.holdingID)
+            player = data.datamanager.getPlayerWithID(holding.playerID)
+            orders = data.datamanager.getOrdersByPlayer(player)
         except Exception as e:
             return False
         # If returned statement is empty
@@ -69,8 +93,8 @@ class MarketManager:
         """
         # Get all Listings for the Player in the passed Order
         try:
-            player = getPlayerWithID(order.playerID)
-            listings = getListingsByPlayer(player)
+            player = data.datamanager.getPlayerWithID(order.playerID)
+            listings = data.datamanager.getListingsByPlayer(player)
         except Exception as e:
             return False
         if listings is None:
@@ -89,26 +113,6 @@ class MarketManager:
 
         return match
 
-    @staticmethod
-    def updatePlayer(osuPlayer: dict):
-        """
-        Updates an osu! player with new osu!api information
-        :param osuPlayer: A Player model object.
-        :return: The updated Player model object, or None if no matching player to update was found.
-        """
-        player = getPlayerWithID(int(osuPlayer["user_id"]))
-        if player is None:
-            return
-
-        player.playerName = osuPlayer["username"]
-        player.country = osuPlayer["country"]
-        player.rank = osuPlayer["pp_rank"]
-        player.rankCountry = int(osuPlayer["pp_country_rank"])
-        player.pp = int(float(osuPlayer["pp_raw"]))
-        player.accuracy = float(osuPlayer["accuracy"])
-        player.save()
-        return player
-
 
 class ProcessTransactions:
 
@@ -122,9 +126,9 @@ class ProcessTransactions:
         """
         # This method assumes the Order CAN purchase from the Listing.
 
-        buyer = getUser(order.buyerID)
+        buyer = data.datamanager.getUser(order.buyerID)
         # Should never fail, Listing cannot exist without stock being Held
-        seller = getUser(getHolding(listing.holdingID).userID)
+        seller = data.datamanager.getUser(data.datamanager.getHolding(listing.holdingID).userID)
 
         # Find if order buys out listing or listing fills order
         if order.amount > listing.amount:
@@ -190,7 +194,7 @@ class ProcessTransactions:
             ProcessTransactions.cleanSale(listing)
 
         # As sale has been made, update the price of the sold Player
-        MarketManager.updatePrice(getPlayerWithID(transaction.playerID))
+        MarketManager.updatePrice(data.datamanager.getPlayerWithID(transaction.playerID))
         return transaction
 
     @staticmethod
@@ -199,8 +203,8 @@ class ProcessTransactions:
         Create a Transaction based on a passed Order, Listing, and pre-calculated amount and price.
         :return: The created Transaction model object.
         """
-        listing = getListingDetail(listing.listingID)
-        return addTransaction(
+        listing = data.datamanager.getListingDetail(listing.listingID)
+        return data.datamanager.addTransaction(
             sellerID=listing.userID,
             buyerID=order.buyerID,
             playerID=order.playerID,
