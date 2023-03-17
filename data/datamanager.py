@@ -185,12 +185,13 @@ def getListingDetail(listingID: int):
     """
 
     try:
-        return (Listing.select()
+        return (Listing.select(Listing, Holding, Player, User)
                 .join(Holding)
                 .join_from(Holding, Player)
                 .join_from(Holding, User)
                 .where(Listing.listingID == listingID)
-                .objects())
+                .objects()
+                .get())
     except Exception as e:
         print(e)
         return None
